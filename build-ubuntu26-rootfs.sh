@@ -188,12 +188,12 @@ echo "✅ 原始镜像生成完成: $ROOTFS_IMG"
 # ========================================================
 # ⚡ 修复点3：增加 sparse image 极速刷机转换
 # ========================================================
-echo "🔄 正在将其转换为 Fastboot 专用的稀疏镜像 (Sparse Image)..."
-SPARSE_IMG="sparse_${ROOTFS_IMG}"
-img2simg "$ROOTFS_IMG" "$SPARSE_IMG"
+#echo "🔄 正在将其转换为 Fastboot 专用的稀疏镜像 (Sparse Image)..."
+#SPARSE_IMG="sparse_${ROOTFS_IMG}"
+#img2simg "$ROOTFS_IMG" "$SPARSE_IMG"
 
 echo "🗜️ 正在生成最终 7z 压缩包..."
-7z a "ubuntu26_${DESKTOP_ENV}_${TIMESTAMP}.7z" "$SPARSE_IMG"
+7z a "ubuntu26_${DESKTOP_ENV}_${TIMESTAMP}.7z" "$ROOTFS_IMG"
 
-rm -f "$ROOTFS_IMG" "$SPARSE_IMG"
+rm -f "$ROOTFS_IMG"
 echo "🎉 终极修砖版 Ubuntu 构建成功！"
