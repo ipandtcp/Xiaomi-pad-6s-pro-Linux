@@ -73,7 +73,7 @@ jobs:
     needs: prepare-release
     strategy:
       matrix:
-        desktop_env: [gnome, kde, xfce]
+        desktop_env: [gnome]
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
