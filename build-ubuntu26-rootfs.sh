@@ -76,7 +76,8 @@ chroot rootdir apt install -y --no-install-recommends \
 if ls *.deb 1> /dev/null 2>&1; then
     cp *.deb rootdir/tmp/
     # 此时系统有了 kmod 和 initramfs-tools，内核 deb 的 post-install 脚本才能正常运行
-    chroot rootdir bash -c "apt install -y /tmp/*.deb"
+    chroot rootdir bash -c "apt install -y  -o Dpkg::Options::='--force-overwrite'  /tmp/*.deb"
+    chroot rootdir bash -c "apt install -y -f" || true
     
     # 终极保险：动态侦测真实版本并强制生成模块索引
     echo "   正在强制更新内核模块依赖..."
@@ -84,6 +85,8 @@ if ls *.deb 1> /dev/null 2>&1; then
     if [ -n "$KERNEL_MODULE_DIR" ]; then
         echo "   ✅ 动态识别到真实内核版本目录: $KERNEL_MODULE_DIR"
         chroot rootdir /sbin/depmod -a "$KERNEL_MODULE_DIR" || true
+    else
+        echo "   ❌ 警告：未找到内核模块目录，内核可能未安装成功！"
     fi
 fi
 
