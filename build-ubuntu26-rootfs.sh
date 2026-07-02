@@ -52,6 +52,11 @@ mount --bind /dev/pts rootdir/dev/pts
 mount -t proc proc rootdir/proc
 mount -t sysfs sys rootdir/sys
 
+# 【修复点】：在 chroot 期间使用静态 DNS，确保 apt 能正常联网
+rm -f rootdir/etc/resolv.conf
+echo "nameserver 8.8.8.8" > rootdir/etc/resolv.conf
+echo "nameserver 223.5.5.5" >> rootdir/etc/resolv.conf
+
 # 基础软件源
 printf "deb %s %s main restricted universe multiverse\n" "$UBUNTU_MIRROR" "$UBUNTU_SUITE" > rootdir/etc/apt/sources.list
 printf "deb %s %s-updates main restricted universe multiverse\n" "$UBUNTU_MIRROR" "$UBUNTU_SUITE" >> rootdir/etc/apt/sources.list
@@ -66,12 +71,12 @@ chroot rootdir apt update
 chroot rootdir apt install -y --no-install-recommends \
     systemd sudo vim-tiny wget curl \
     network-manager openssh-server \
-    wpasupplicant dbus kmod initramfs-tools
+    wpasupplicant dbus kmod initramfs-tools locales
 
 if ls *.deb 1> /dev/null 2>&1; then
     cp *.deb rootdir/tmp/
     # 此时系统有了 kmod 和 initramfs-tools，内核 deb 的 post-install 脚本才能正常运行
-    chroot rootdir bash -c "apt install -y /tmp/*.deb || true"
+    chroot rootdir bash -c "apt install -y /tmp/*.deb"
     
     # 终极保险：动态侦测真实版本并强制生成模块索引
     echo "   正在强制更新内核模块依赖..."
@@ -165,8 +170,17 @@ if [ "$DM" = "lightdm" ]; then
     chroot rootdir systemctl enable lightdm
 fi
 
+# 【修复点】：启用 NetworkManager
+chroot rootdir systemctl enable NetworkManager
+
+# 【修复点】：在所有 chroot apt 操作完成后，再配置 systemd-resolved
+chroot rootdir systemctl enable systemd-resolved
+rm -f rootdir/etc/resolv.conf
+ln -sf /run/systemd/resolve/stub-resolv.conf rootdir/etc/resolv.conf
+
 # 统一进入图形层级
 chroot rootdir systemctl set-default graphical.target
+
 
 # 文件系统挂载对齐
 printf "PARTLABEL=linux / ext4 defaults,noatime,errors=remount-ro 0 1\n" > rootdir/etc/fstab
