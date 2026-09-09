@@ -31,7 +31,7 @@ jobs:
           TAG="ubuntu26-$(date -u '+%Y%m%d')-${GITHUB_SHA::8}"
           echo "release_tag=$TAG" >> $GITHUB_OUTPUT
       - name: Create GitHub Release
-        if: ${{ !github.event.inputs.skip_release }}
+        if: ${{ github.event.inputs.skip_release != 'true' }}
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
@@ -141,7 +141,7 @@ jobs:
           retention-days: 7
 
       - name: Upload to Release
-        if: ${{ !github.event.inputs.skip_release }}
+        if: ${{ github.event.inputs.skip_release != 'true' }}
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.prepare-release.outputs.release_tag }}
