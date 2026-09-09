@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       kernel_version:
-        description: '内核版本 (如 7.0)'
+        description: '内核版本 (如 7.1)'
         required: true
-        default: '7.0'
+        default: '7.1.8'
       skip_release:
         description: '跳过创建GitHub Release'
         type: boolean
@@ -38,31 +38,47 @@ jobs:
           name: "Ubuntu 26.04 Desktop - ${{ steps.tag.outputs.release_tag }}"
           body: |
             🐧 Ubuntu 26.04 LTS (Resolute Raccoon) Desktop
-            
+
             ---
-            
+
             ### 📋 构建信息
             | 项目 | 详情 |
             |------|------|
             | Ubuntu版本 | 26.04 LTS (Resolute) |
-            | 内核版本 | ${{ github.event.inputs.kernel_version || '7.0' }} |
+            | 内核版本 | ${{ github.event.inputs.kernel_version || '7.1.8' }} |
             | 桌面环境 | GNOME, KDE Plasma, Xfce |
-            
+
             ---
-            
+
             ### 🔐 默认凭据
-            - 用户名: `luser`
-            - 密码: `luser`
-            
+            - 用户名: `pp`
+            - 密码: `1`
+
             ---
-            
+
             ### 🌐 语言环境
-            - 系统语言: 英文 (en_US.UTF-8)
-            
+            - 系统语言: 英文 (en_US.UTF-8) + 中文 (zh_CN.UTF-8)
+            - 输入法: fcitx5 拼音
+
             ---
-            
+
+            ### 🎨 预置内容
+            - 完整 GNOME 设置 (dconf) / 扩展 / 快捷键 / 终端配置
+            - fcitx5 拼音输入法
+            - KeePass2、qbootctl
+            - (不预装浏览器，刷机后自行安装)
+
+            ---
+
+            ### 🔌 双系统启动
+            - 本镜像为双系统版本 (root=PARTLABEL=linux)，保留 Android
+            - 刷机时使用下方 `boot_sheng_dualboot.img`
+
+            ---
+
             ### 📦 镜像文件
-            构建完成后将出现在下方附件中。
+            - `ubuntu26_gnome_*.7z` — 解压后刷入 `linux` 分区
+            - `boot_sheng_dualboot.img` — 刷入 boot 分区
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,18 +93,30 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install build tools
-        run: sudo apt update && sudo apt install -y debootstrap libarchive-tools p7zip-full curl wget android-sdk-libsparse-utils
 
-      - name: Download kernel bundle
+      - name: Install build tools
+        run: sudo apt update && sudo apt install -y debootstrap libarchive-tools p7zip-full curl wget android-sdk-libsparse-utils dconf-cli
+
+      - name: Download kernel (7.1.8) + extras + dualboot boot.img
         run: |
           KERNEL_VER="${{ github.event.inputs.kernel_version }}"
-          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.0"; fi
-          
-          gh release download "kernel-bundle-${KERNEL_VER}" \
+          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.1.8"; fi
+
+          # 核心内核 deb (linux/firmware/alsa/devauth) —— 来自新建的 kernel-${KERNEL_VER}
+          gh release download "kernel-${KERNEL_VER}" \
             --pattern "*.deb" --repo "${{ github.repository }}" --clobber
+
+          # 额外用户态驱动 (传感器/fastrpc/DSP, 与内核版本无关, 复用现有 bundle)
+          gh release download "kernel-bundle-7.1" \
+            --pattern "fastrpc*.deb" --pattern "iio-sensor-proxy*.deb" \
+            --pattern "libssc*.deb" --pattern "sheng-sensors*.deb" \
+            --repo "${{ github.repository }}" --clobber || true
           ls -la *.deb
+
+          # 双系统启动镜像 (root=PARTLABEL=linux, 保留 Android)
+          gh release download "kernel-${KERNEL_VER}" \
+            --pattern "boot_sheng_dualboot.img" --repo "${{ github.repository }}" --clobber || true
+          ls -la boot_sheng_dualboot.img 2>/dev/null || echo "⚠️ 未找到 dualboot boot.img"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -96,11 +124,11 @@ jobs:
         id: build
         run: |
           KERNEL_VER="${{ github.event.inputs.kernel_version }}"
-          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.0"; fi
-          
+          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.1.8"; fi
+
           chmod +x build-ubuntu26-rootfs.sh
           sudo ./build-ubuntu26-rootfs.sh ${KERNEL_VER} ${{ matrix.desktop_env }}
-          
+
           SEVEN_Z_FILE=$(ls ubuntu26_${{ matrix.desktop_env }}_*.7z | head -1)
           echo "filename=$(basename "$SEVEN_Z_FILE")" >> $GITHUB_OUTPUT
           echo "path=$SEVEN_Z_FILE" >> $GITHUB_OUTPUT
@@ -117,6 +145,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.prepare-release.outputs.release_tag }}
-          files: ${{ steps.build.outputs.path }}
+          files: |
+            ${{ steps.build.outputs.path }}
+            boot_sheng_dualboot.img
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

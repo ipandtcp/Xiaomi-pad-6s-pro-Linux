@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       kernel_version:
-        description: "内核版本号 (如: 7.0)"
+        description: "内核版本号 (如: 7.1.8)"
         required: true
-        default: "7.0"
+        default: "7.1.8"
 
 jobs:
   build:
-    name: "构建内核 v${{ github.event.inputs.kernel_version || '7.0' }}"
+    name: "构建内核 v${{ github.event.inputs.kernel_version || '7.1.8' }}"
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
@@ -131,7 +131,10 @@ jobs:
             - install.7z
           draft: false
           prerelease: false
-          files: "*.deb"
+          files: |
+            *.deb
+            boot_sheng_dualboot.img
+            boot_sheng_singleboot.img
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
