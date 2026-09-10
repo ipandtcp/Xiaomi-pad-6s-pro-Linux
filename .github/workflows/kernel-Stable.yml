@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       kernel_version:
-        description: "内核版本号 (如: 7.1.8)"
+        description: "内核版本号 (如: 7.0)"
         required: true
-        default: "7.1.8"
+        default: "7.0"
 
 jobs:
   build:
-    name: "构建内核 v${{ github.event.inputs.kernel_version || '7.1.8' }}"
+    name: "构建内核 v${{ github.event.inputs.kernel_version || '7.0' }}"
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: write

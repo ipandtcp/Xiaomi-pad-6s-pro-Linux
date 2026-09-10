@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       kernel_version:
-        description: '内核版本 (如 7.1)'
+        description: '内核版本 (如 7.0)'
         required: true
-        default: '7.1.8'
+        default: '7.0'
       skip_release:
         description: '跳过创建GitHub Release'
         type: boolean
@@ -45,7 +45,7 @@ jobs:
             | 项目 | 详情 |
             |------|------|
             | Ubuntu版本 | 26.04 LTS (Resolute) |
-            | 内核版本 | ${{ github.event.inputs.kernel_version || '7.1.8' }} |
+            | 内核版本 | ${{ github.event.inputs.kernel_version || '7.0' }} |
             | 桌面环境 | GNOME, KDE Plasma, Xfce |
 
             ---
@@ -97,17 +97,17 @@ jobs:
       - name: Install build tools
         run: sudo apt update && sudo apt install -y debootstrap libarchive-tools p7zip-full curl wget android-sdk-libsparse-utils dconf-cli
 
-      - name: Download kernel (7.1.8) + extras + dualboot boot.img
+      - name: Download kernel (7.0) + extras + dualboot boot.img
         run: |
           KERNEL_VER="${{ github.event.inputs.kernel_version }}"
-          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.1.8"; fi
+          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.0"; fi
 
           # 核心内核 deb (linux/firmware/alsa/devauth) —— 来自新建的 kernel-${KERNEL_VER}
           gh release download "kernel-${KERNEL_VER}" \
             --pattern "*.deb" --repo "${{ github.repository }}" --clobber
 
-          # 额外用户态驱动 (传感器/fastrpc/DSP, 与内核版本无关, 复用现有 bundle)
-          gh release download "kernel-bundle-7.1" \
+          # 额外用户态驱动 (传感器/fastrpc/DSP, 与内核版本无关, 取同版本 bundle)
+          gh release download "kernel-bundle-${KERNEL_VER}" \
             --pattern "fastrpc*.deb" --pattern "iio-sensor-proxy*.deb" \
             --pattern "libssc*.deb" --pattern "sheng-sensors*.deb" \
             --repo "${{ github.repository }}" --clobber || true
@@ -124,7 +124,7 @@ jobs:
         id: build
         run: |
           KERNEL_VER="${{ github.event.inputs.kernel_version }}"
-          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.1.8"; fi
+          if [ -z "$KERNEL_VER" ]; then KERNEL_VER="7.0"; fi
 
           chmod +x build-ubuntu26-rootfs.sh
           sudo ./build-ubuntu26-rootfs.sh ${KERNEL_VER} ${{ matrix.desktop_env }}
